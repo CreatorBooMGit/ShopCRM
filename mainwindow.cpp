@@ -198,7 +198,49 @@ void MainWindow::on_actionAddGood_triggered()
 
 void MainWindow::on_actionEditGood_triggered()
 {
+    DialogGood *dialogGood = new DialogGood();
 
+    query->prepare("SELECT categories_idcategory, categories_name "
+                   "FROM categories");
+    query->exec();
+
+    while(query->next())
+        dialogGood->addCategory(query->value("categories_idcategory").toInt(),
+                                query->value("categories_name").toString());
+
+    query->prepare("SELECT goods_idgood, goods_rcd, goods_category, goods_name, goods_price, goods_count "
+                   "FROM goods "
+                   "WHERE goods_idgood = :goods_idgood");
+    query->bindValue(":goods_idgood", goods_rcd[ui->tableWidgetGoods->currentRow()]);
+    query->exec();
+    query->next();
+
+    dialogGood->setRcd(query->value("goods_rcd").toString());
+    dialogGood->setCategory(query->value("goods_category").toInt());
+    dialogGood->setName(query->value("goods_name").toString());
+    dialogGood->setPrice(query->value("goods_price").toDouble());
+    dialogGood->setCount(query->value("goods_count").toDouble());
+
+    dialogGood->exec();
+
+    if(dialogGood->getState() == 1)
+    {
+        query->prepare("UPDATE goods "
+                       "SET goods_rcd = :goods_rcd, goods_category = :goods_category, goods_name = :goods_name, goods_price = :goods_price, goods_count = :goods_count "
+                       "WHERE goods_idgood = :goods_idgood");
+        query->bindValue(":goods_idgood", goods_rcd[ui->tableWidgetGoods->currentRow()]);
+        query->bindValue(":goods_rcd", dialogGood->getRcd());
+        query->bindValue(":goods_category", dialogGood->getCategory());
+        query->bindValue(":goods_name", dialogGood->getName());
+        query->bindValue(":goods_price", dialogGood->getPrice());
+        query->bindValue(":goods_count", dialogGood->getCount());
+
+        query->exec();
+
+        updateGoods();
+    }
+
+    delete dialogGood;
 }
 
 void MainWindow::on_actionRemoveGood_triggered()
@@ -233,7 +275,21 @@ void MainWindow::on_actionAddCategory_triggered()
 
 void MainWindow::on_actionEditCategory_triggered()
 {
+    QString n_category = QInputDialog::getText(this, tr("Добавить категорию"), tr("Введите название новой категории"), QLineEdit::Normal, ui->tableWidgetCategories->currentItem()->text());
 
+    if(n_category.isEmpty()) return;
+
+    query->prepare("UPDATE categories "
+                   "SET categories_name = :categories_name "
+                   "WHERE categories_idcategory = :categories_idcategory");
+    query->bindValue(":categories_idcategory", categories_rcd[ui->tableWidgetCategories->currentRow()]);
+    query->bindValue(":categories_name", n_category);
+
+    query->exec();
+    qDebug() << query->boundValues();
+    qDebug() << query->lastError().text();
+
+    updateCategories();
 }
 
 void MainWindow::on_actionRemoveCategory_triggered()
@@ -288,7 +344,53 @@ void MainWindow::on_actionAddClient_triggered()
 
 void MainWindow::on_actionEditClient_triggered()
 {
+    DialogClient *dialogClient = new DialogClient();
 
+    query->prepare("SELECT employees_idemployee, employees_surname, employees_name, employees_patronymic "
+                   "FROM employees");
+    query->exec();
+
+    while(query->next())
+        dialogClient->addManager(query->value("employees_idemployee").toInt(),
+                                 query->value("employees_surname").toString(),
+                                 query->value("employees_name").toString(),
+                                 query->value("employees_patronymic").toString());
+
+    query->prepare("SELECT clients_surname, clients_name, clients_patronymic, clients_phone, clients_email, clients_manager "
+                   "FROM clients "
+                   "WHERE clients_rcd = :clients_rcd");
+    query->bindValue(":clients_rcd", clients_rcd[ui->tableWidgetClients->currentRow()]);
+    query->exec();
+    query->next();
+
+    dialogClient->setSurname(query->value("clients_surname").toString());
+    dialogClient->setName(query->value("clients_name").toString());
+    dialogClient->setPatronymic(query->value("clients_patronymic").toString());
+    dialogClient->setPhone(query->value("clients_phone").toString());
+    dialogClient->setEmail(query->value("clients_email").toString());
+    dialogClient->setManagerId(query->value("clients_manager").toInt());
+
+    dialogClient->exec();
+
+    if(dialogClient->getState() == 1)
+    {
+        query->prepare("UPDATE clients "
+                       "SET clients_surname = :clients_surname, clients_name = :clients_name, clients_patronymic = :clients_patronymic, clients_phone = :clients_phone, clients_email = :clients_email, clients_manager = :clients_manager "
+                       "WHERE clients_rcd = :clients_rcd");
+        query->bindValue(":clients_rcd", clients_rcd[ui->tableWidgetClients->currentRow()]);
+        query->bindValue(":clients_surname", dialogClient->getSurname());
+        query->bindValue(":clients_name", dialogClient->getName());
+        query->bindValue(":clients_patronymic", dialogClient->getPatronymic());
+        query->bindValue(":clients_phone", dialogClient->getPhone());
+        query->bindValue(":clients_email", dialogClient->getEmail());
+        query->bindValue(":clients_manager", dialogClient->getManagerId());
+
+        query->exec();
+
+        updateClients();
+    }
+
+    delete dialogClient;
 }
 
 void MainWindow::on_actionRemoveClient_triggered()
@@ -314,7 +416,7 @@ void MainWindow::on_actionAddEmployee_triggered()
 
     if(dialogEmployee->getState() == 1)
     {
-        query->prepare("INSERT INTO employees (employees_surname, employees_name, employees_patronymic, employees_birthday, employees_login, employees_password) "
+        query->prepare("INSERT INTO employees (employees_surname, employees_name, employees_patronymic, employees_birthday, employees_username, employees_password) "
                        "VALUES (:surname, :name, :patronymic, :birthday, :login, :password)");
         query->bindValue(":surname", dialogEmployee->getSurname());
         query->bindValue(":name", dialogEmployee->getName());
@@ -333,7 +435,43 @@ void MainWindow::on_actionAddEmployee_triggered()
 
 void MainWindow::on_actionEditEmployee_triggered()
 {
+    DialogEmployee *dialogEmployee = new DialogEmployee();
 
+    query->prepare("SELECT employees_surname, employees_name, employees_patronymic, employees_birthday, employees_username "
+                   "FROM employees "
+                   "WHERE employees_idemployee = :employees_idemployee");
+    query->bindValue(":employees_idemployee", emplyoees_rcd[ui->tableWidgetEmployees->currentRow()]);
+    query->exec();
+    query->next();
+
+    dialogEmployee->setSurname(query->value("employees_surname").toString());
+    dialogEmployee->setName(query->value("employees_name").toString());
+    dialogEmployee->setPatronymic(query->value("employees_patronymic").toString());
+    dialogEmployee->setBirthday(query->value("employees_birthday").toDate());
+    dialogEmployee->setLogin(query->value("employees_username").toString());
+
+    dialogEmployee->exec();
+
+    if(dialogEmployee->getState() == 1)
+    {
+        query->prepare("UPDATE employees "
+                       "SET employees_surname = :employees_surname, employees_name = :employees_name, employees_patronymic = :employees_patronymic, "
+                       "employees_birthday = :employees_birthday, employees_username = :employees_username, employees_password = 0employees_password: "
+                       "WHERE employees_idemployee = :employees_idemployee");
+        query->bindValue(":employees_idemployee", emplyoees_rcd[ui->tableWidgetEmployees->currentRow()]);
+        query->bindValue(":surname", dialogEmployee->getSurname());
+        query->bindValue(":name", dialogEmployee->getName());
+        query->bindValue(":patronymic", dialogEmployee->getPatronymic());
+        query->bindValue(":birthday", dialogEmployee->getBirthday().toString("yyyy-MM-dd"));
+        query->bindValue(":login", dialogEmployee->getLogin());
+        query->bindValue(":password", dialogEmployee->getPassword());
+
+        query->exec();
+
+        updateEmployees();
+    }
+
+    delete dialogEmployee;
 }
 
 void MainWindow::on_actionRemoveEmployee_triggered()
@@ -445,7 +583,7 @@ void MainWindow::updateCategories()
     {
         ui->tableWidgetCategories->setRowCount(ui->tableWidgetCategories->rowCount() + 1);
 
-        goods_rcd.push_back(query->value("categories_idcategory").toInt());
+        categories_rcd.push_back(query->value("categories_idcategory").toInt());
 
         QTableWidgetItem *itemName  = new QTableWidgetItem();
 

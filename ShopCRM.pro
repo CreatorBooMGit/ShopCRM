@@ -47,3 +47,5 @@ FORMS    += mainwindow.ui \
 
 RESOURCES += \
     images.qrc
+
+RC_ICONS = crm.ico

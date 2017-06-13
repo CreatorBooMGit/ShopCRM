@@ -72,7 +72,7 @@ QString DialogClient::getPatronymic() const
 
 void DialogClient::setPatronymic(const QString &value)
 {
-    patronymic = value;
+    ui->lineEditPatronymic->setText(value);
 }
 
 QString DialogClient::getName() const
