@@ -44,6 +44,7 @@ public:
     double  getSum() const;
     int     getStatus() const;
 
+    void addGoodOrder(int _id, QString _rcd, QString _name, double _price, double _count);
     QVector<Good> getGoodsOrder() const;
 
     void addClient(int _id, QString _FIO);

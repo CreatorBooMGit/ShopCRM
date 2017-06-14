@@ -44,6 +44,45 @@ int DialogOrder::getStatus() const
     return status;
 }
 
+void DialogOrder::addGoodOrder(int _id, QString _rcd, QString _name, double _price, double _count)
+{
+    ui->tableWidgetGoods->setRowCount(ui->tableWidgetGoods->rowCount() + 1);
+
+    Good t_good;
+    t_good.id       = _id;
+    t_good.rcd      = _rcd;
+    t_good.name     = _name;
+    t_good.price    = _price;
+    t_good.count    = _count;
+    t_good.sum      = _price * _count;
+    t_good.flag     = GoodAdded;
+    goodsOrder.push_back(t_good);
+
+    QTableWidgetItem *itemRcd       = new QTableWidgetItem();
+    QTableWidgetItem *itemName      = new QTableWidgetItem();
+    QTableWidgetItem *itemSum      = new QTableWidgetItem();
+    QTableWidgetItem *itemSumPDV      = new QTableWidgetItem();
+    QTableWidgetItem *itemCount      = new QTableWidgetItem();
+
+    itemRcd->setText(_rcd);
+    itemName->setText(_name);
+    itemSum->setText(QString::number(t_good.sum));
+    itemSumPDV->setText(QString::number(t_good.sum * 1.2));
+    itemCount->setText(QString::number(_count));
+
+    itemRcd->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
+    itemName->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
+    itemSum->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
+    itemSumPDV->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
+    itemCount->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
+
+    ui->tableWidgetGoods->setItem(ui->tableWidgetGoods->rowCount() - 1, 0, itemRcd);
+    ui->tableWidgetGoods->setItem(ui->tableWidgetGoods->rowCount() - 1, 1, itemName);
+    ui->tableWidgetGoods->setItem(ui->tableWidgetGoods->rowCount() - 1, 2, itemSum);
+    ui->tableWidgetGoods->setItem(ui->tableWidgetGoods->rowCount() - 1, 3, itemSumPDV);
+    ui->tableWidgetGoods->setItem(ui->tableWidgetGoods->rowCount() - 1, 4, itemCount);
+}
+
 void DialogOrder::setStatus(int value)
 {
     int t_itemIndex = 0;
@@ -218,7 +257,9 @@ void DialogOrder::on_actionAddGood_triggered()
     {
         ui->tableWidgetGoods->setRowCount(ui->tableWidgetGoods->rowCount() + 1);
 
-        goodsOrder.push_back(dialogAddGood->getGood());
+        Good t_good = dialogAddGood->getGood();
+        t_good.flag = GoodAdded;
+        goodsOrder.push_back(t_good);
 
         QTableWidgetItem *itemRcd       = new QTableWidgetItem();
         QTableWidgetItem *itemName      = new QTableWidgetItem();
@@ -261,12 +302,58 @@ void DialogOrder::on_actionAddGood_triggered()
 
 void DialogOrder::on_actionEditGoodCount_triggered()
 {
+    DialogAddGoodInOrder *dialogGood = new DialogAddGoodInOrder();
 
+    dialogGood->setGoods(goods_rcd);
+
+    dialogGood->setId(goodsOrder[ui->tableWidgetGoods->currentRow()].id);
+    dialogGood->setCount(goodsOrder[ui->tableWidgetGoods->currentRow()].count);
+
+    dialogGood->exec();
+
+    if(dialogGood->getState())
+    {
+        ui->tableWidgetGoods->setRowCount(ui->tableWidgetGoods->rowCount() + 1);
+
+        Good t_good = dialogGood->getGood();
+        if(goodsOrder[ui->tableWidgetGoods->currentRow()].flag == GoodNothing)
+            t_good.flag = GoodModify;
+        else
+            t_good.flag = GoodAdded;
+
+        for(int i = 0; i < goods_rcd.count(); i++)
+        {
+            if(goods_rcd[i].id == dialogGood->getGood().id)
+            {
+                goods_rcd[i].countHave += goodsOrder[ui->tableWidgetGoods->currentRow()].count;
+                goods_rcd[i].countHave -= dialogGood->getGood().count;
+                break;
+            }
+        }
+
+        ui->doubleSpinBoxSum->setValue(ui->doubleSpinBoxSum->value() - goodsOrder[ui->tableWidgetGoods->currentRow()].sum);
+        goodsOrder[ui->tableWidgetGoods->currentRow()] = dialogGood->getGood();
+        ui->doubleSpinBoxSum->setValue(ui->doubleSpinBoxSum->value() + goodsOrder[ui->tableWidgetGoods->currentRow()].sum);
+
+        ui->tableWidgetGoods->item(ui->tableWidgetGoods->currentRow(), 0)->setText(dialogGood->getGood().rcd);
+        ui->tableWidgetGoods->item(ui->tableWidgetGoods->currentRow(), 1)->setText(dialogGood->getGood().name);
+        ui->tableWidgetGoods->item(ui->tableWidgetGoods->currentRow(), 2)->setText(QString::number(dialogGood->getGood().sum));
+        ui->tableWidgetGoods->item(ui->tableWidgetGoods->currentRow(), 3)->setText(QString::number(dialogGood->getGood().sum * 1.2));
+        ui->tableWidgetGoods->item(ui->tableWidgetGoods->currentRow(), 4)->setText(QString::number(dialogGood->getGood().count));
+    }
+
+    delete dialogGood;
 }
 
 void DialogOrder::on_actionRemoveGood_triggered()
 {
-
+    if(goodsOrder[ui->tableWidgetGoods->currentRow()].flag == GoodNothing || goodsOrder[ui->tableWidgetGoods->currentRow()].flag == GoodModify)
+        goodsOrder[ui->tableWidgetGoods->currentRow()].flag = GoodRemove;
+    else
+    {
+        ui->tableWidgetGoods->removeRow(ui->tableWidgetGoods->currentRow());
+        goodsOrder.remove(ui->tableWidgetGoods->currentRow(), 1);
+    }
 }
 
 int DialogOrder::getState() const

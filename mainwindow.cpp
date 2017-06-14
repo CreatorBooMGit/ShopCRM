@@ -147,7 +147,119 @@ void MainWindow::on_actionAddOrder_triggered()
 
 void MainWindow::on_actionEditOrder_triggered()
 {
+    DialogOrder *dialogOrder = new DialogOrder();
 
+    query->prepare("SELECT clients_rcd, clients_surname, clients_name, clients_patronymic "
+                   "FROM clients");
+    query->exec();
+
+    while(query->next())
+        dialogOrder->addClient(query->value("clients_rcd").toInt(), QString("%1 %2 %3")
+                               .arg(query->value("clients_surname").toString())
+                               .arg(query->value("clients_name").toString())
+                               .arg(query->value("clients_patronymic").toString()));
+
+    query->prepare("SELECT employees_idemployee, employees_surname, employees_name, employees_patronymic "
+                   "FROM employees");
+    query->exec();
+
+    while(query->next())
+        dialogOrder->addManager(query->value("employees_idemployee").toInt(), QString("%1 %2 %3")
+                                .arg(query->value("employees_surname").toString())
+                                .arg(query->value("employees_name").toString())
+                                .arg(query->value("employees_patronymic").toString()));
+
+    query->prepare("SELECT status_id, status_name "
+                   "FROM status");
+    query->exec();
+
+    while(query->next())
+        dialogOrder->addStatus(query->value("status_id").toInt(), query->value("status_name").toString());
+
+    query->prepare("SELECT goods_idgood, goods_rcd, goods_name, goods_price, goods_count "
+                   "FROM goods ");
+    query->exec();
+
+    while(query->next())
+        dialogOrder->addGood(query->value("goods_idgood").toInt(),
+                             query->value("goods_rcd").toString(),
+                             query->value("goods_name").toString(),
+                             query->value("goods_price").toDouble(),
+                             query->value("goods_count").toDouble());
+
+    query->prepare("SELECT orders_rcd, orders_date, orders_time, orders_client, orders_manager, orders_sum, orders_status "
+                   "FROM orders "
+                   "WHERE orders_idorder = :orders_idorder");
+    query->bindValue(":orders_idorder", orders_rcd[ui->tableWidgetOrders->currentRow()]);
+    query->exec();
+    query->next();
+
+    dialogOrder->setRcd(query->value("orders_rcd").toString());
+    dialogOrder->setDate(query->value("orders_date").toDate());
+    dialogOrder->setTime(query->value("orders_time").toTime());
+    dialogOrder->setClient(query->value("orders_client").toInt());
+    dialogOrder->setManager(query->value("orders_manager").toInt());
+    dialogOrder->setSum(query->value("orders_sum").toDouble());
+    dialogOrder->setStatus(query->value("orders_status").toInt());
+
+    query->prepare("SELECT goods_idgood, goods_rcd, goods_name, goods_price, ordergoods_count "
+                   "FROM goods "
+                   "INNER JOIN ordergoods ON ordergoods_good = goods_idgood");
+    query->exec();
+
+    while(query->next())
+        dialogOrder->addGoodOrder(query->value("goods_idgood").toInt(),
+                                  query->value("goods_rcd").toString(),
+                                  query->value("goods_name").toString(),
+                                  query->value("goods_price").toDouble(),
+                                  query->value("ordergoods_count").toDouble());
+
+    dialogOrder->exec();
+
+    if(dialogOrder->getState() == 1)
+    {
+        query->prepare("UPDATE orders "
+                       "SET orders_rcd = :orders_rcd, orders_date = :orders_date, orders_time = :orders_time, orders_client = :orders_client, orders_manager = :orders_manager, orders_sum = :orders_sum, orders_status = :orders_status "
+                       "WHERE orders_idorder = :orders_idorder");
+        query->bindValue(":orders_idorder", orders_rcd[ui->tableWidgetOrders->currentRow()]);
+        query->bindValue(":orders_rcd", dialogOrder->getRcd());
+        query->bindValue(":orders_date", dialogOrder->getDate());
+        query->bindValue(":orders_time", dialogOrder->getTime());
+        query->bindValue(":orders_client", dialogOrder->getClient());
+        query->bindValue(":orders_manager", dialogOrder->getManager());
+        query->bindValue(":orders_sum", dialogOrder->getSum());
+        query->bindValue(":orders_status", dialogOrder->getStatus());
+
+        query->exec();
+
+        int t_lastIns = query->lastInsertId().toInt();
+        query->prepare("DELETE FROM ordergoods WHERE ordergoods_order = :ordergoods_order");
+        query->bindValue(":ordergoods_order", orders_rcd[ui->tableWidgetOrders->currentRow()]);
+        query->exec();
+
+        for(int i = 0; i < dialogOrder->getGoodsOrder().count(); i++)
+        {
+            query->prepare("INSERT INTO ordergoods (ordergoods_order, ordergoods_good, ordergoods_count ) "
+                           "VALUES (:ordergoods_order, :ordergoods_good, :ordergoods_count)");
+            query->bindValue(":ordergoods_order", t_lastIns);
+            query->bindValue(":ordergoods_good", dialogOrder->getGoodsOrder()[i].id);
+            query->bindValue(":ordergoods_count", dialogOrder->getGoodsOrder()[i].count);
+
+            query->exec();
+
+            query->prepare("UPDATE goods "
+                           "SET goods_count = goods_count - :goods_count "
+                           "WHERE goods_idgood = :goods_idgood");
+            query->bindValue(":goods_count", dialogOrder->getGoodsOrder()[i].count);
+            query->bindValue(":goods_idgood", dialogOrder->getGoodsOrder()[i].id);
+
+            query->exec();
+        }
+
+        updateOrders();
+    }
+
+    delete dialogOrder;
 }
 
 void MainWindow::on_actionRemoveOrder_triggered()

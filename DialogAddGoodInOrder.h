@@ -7,6 +7,13 @@ namespace Ui {
     class DialogAddGoodInOrder;
 }
 
+enum Flags {
+    GoodNothing = 0,
+    GoodAdded   = 1,
+    GoodModify  = 2,
+    GoodRemove  = 3
+};
+
 struct Good {
     int     id;
     QString rcd;
@@ -15,6 +22,7 @@ struct Good {
     double  sum;
     double  count;
     double  countHave;
+    Flags   flag = GoodNothing;
 };
 
 class DialogAddGoodInOrder : public QDialog
@@ -29,6 +37,9 @@ public:
     Good getGood() const;
 
     void setGoods(const QVector<Good> &value);
+
+    void setId(const int value);
+    void setCount(const double value);
 
 private slots:
     void on_pushButtonOk_clicked();

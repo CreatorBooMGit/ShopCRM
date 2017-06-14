@@ -46,6 +46,23 @@ void DialogAddGoodInOrder::setGoods(const QVector<Good> &value)
     goods = value;
 }
 
+void DialogAddGoodInOrder::setId(const int value)
+{
+    current = value;
+
+    good = goods[current];
+
+    ui->lineEditRcd->setText(good.rcd);
+    ui->lineEditName->setText(good.name);
+    ui->doubleSpinBoxPrice->setValue(good.price);
+    ui->labelCountHave->setText(tr("В наличии: %1").arg(good.countHave));
+}
+
+void DialogAddGoodInOrder::setCount(const double value)
+{
+    ui->doubleSpinBoxCount->setValue(value);
+}
+
 int DialogAddGoodInOrder::getState() const
 {
     return state;
